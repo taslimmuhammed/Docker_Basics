@@ -1,0 +1,77 @@
+//creating network
+docker  network create mongo-network
+//mongo starter
+docker run -d -p 27017:27017 --net mongo-network --name mongotest2 
+-e MONGO_INITDB_ROOT_USERNAME=admin 
+-e MONGO_INITDB_ROOT_PASSWORD=password 
+mongo
+
+//mongo express
+docker run -d -p 8081:8081 -e ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+ -e ME_CONFIG_MONGODB_ADMINPASSWORD=password -e ME_CONFIG_MONGODB_SERVER=mongotest2
+ --net mongo-network --name mongoexpressapp1 mongo-express
+
+//both of the above will connect to the network mongo-network
+
+//start using docker-compose
+docker-compose up [if the name of the file is docker-compose]
+else -> docker-compose -f <file name> up
+
+//create image using Dockerfile
+docker build . -f Dockerfile -t mongoproject:1.0
+
+
+//dockerfile demo
+FROM node:16-alpine
+
+ENV MONGO_DB_USERNAME=admin \
+    MONGO_DB_PWD=password
+
+RUN mkdir -p /home/app
+
+COPY ./app /home/app
+
+# set default dir so that next commands executes in /home/app dir
+WORKDIR /home/app
+
+# will execute npm install in /home/app because of WORKDIR
+RUN npm install
+
+# no need for /home/app/server.js because of WORKDIR
+CMD ["node", "server.js"]
+
+
+
+// docker Compose demo
+version: '3'
+services:
+  my-app:
+    image: mongoproject:1.0
+    ports:
+    - 3000:3000
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongo-data:/data/db
+  mongo-express:
+    image: mongo-express
+    restart: always # fixes MongoNetworkError when mongodb is not ready when mongo-express starts
+    ports:
+      - 8081:8081
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+volumes:
+  mongo-data:
+    driver: local
+
+//the path after the <name>: of voleums can vary
+//Mongodb  => <name>:/data/db
+//mysql    => <name>:var/lib/mysql
+//postgres => <name>:/var/lib/postgresql/data
